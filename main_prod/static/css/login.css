@@ -1,0 +1,108 @@
+/* Auth pages */
+.auth-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--light-bg) 0%, var(--border) 100%);
+    padding: 20px;
+}
+
+.auth-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow-hover);
+    width: 100%;
+    max-width: 450px;
+    padding: 40px;
+    text-align: center;
+}
+
+.auth-card h2 {
+    color: var(--primary);
+    margin-bottom: 30px;
+    font-size: 1.8rem;
+}
+
+.auth-card .form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.auth-card label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.auth-card .form-control {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.auth-card .form-control:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(26,58,143,0.1);
+}
+
+.auth-card .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.auth-card .btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.auth-card .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(26,58,143,0.3);
+}
+
+.auth-card .btn-block {
+    display: block;
+    width: 100%;
+}
+
+.auth-footer {
+    margin-top: 20px;
+    font-size: 0.9rem;
+}
+
+.auth-footer a {
+    color: var(--secondary);
+    text-decoration: none;
+}
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
+
+.messages .alert {
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.alert-error {
+    background: rgba(217,83,79,0.1);
+    color: var(--danger);
+    border-left: 4px solid var(--danger);
+}

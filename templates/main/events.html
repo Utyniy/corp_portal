@@ -1,0 +1,190 @@
+{% extends 'main/base.html' %}
+{% load static %}
+{% load roles %}
+
+{% block title %}События{% endblock %}
+
+{% block content %}
+<div class="events-page">
+    <div class="container">
+        <div class="page-header">
+            <h1><i class="far fa-calendar-alt"></i> Актуальные события</h1>
+            <p>Ближайшие мероприятия, встречи и важные даты</p>
+        </div>
+
+        {% if user|has_any_role:"management,admin" %}
+        <div style="margin-bottom: 20px; display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="{% url 'event_create' %}" class="btn-primary">
+                <i class="fas fa-plus-circle"></i> Создать событие
+            </a>
+        </div>
+        {% endif %}
+
+        <div class="events-toolbar">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="event-search" placeholder="Поиск событий...">
+            </div>
+
+            <div class="filter-controls">
+                <select id="date-filter">
+                    <option value="all">Все даты</option>
+                    <option value="today">Сегодня</option>
+                    <option value="week">Эта неделя</option>
+                    <option value="month">Этот месяц</option>
+                    <option value="future">Только будущие</option>
+                </select>
+
+                <button class="filter-btn" id="apply-filters" type="button">
+                    <i class="fas fa-filter"></i> Применить
+                </button>
+            </div>
+        </div>
+
+        <div class="events-grid" id="events-container">
+            {% for event in event_list %}
+            <div class="event-card" data-date="{{ event.date|date:'Y-m-d' }}">
+                <div class="event-card-header">
+                    <div class="event-date">
+                        <span class="event-day">{{ event.date|date:"j" }}</span>
+                        <span class="event-month">{{ event.date|date:"M"|upper }}</span>
+                    </div>
+
+                    {% if event.department %}
+                        <span class="event-category">{{ event.department }}</span>
+                    {% else %}
+                        <span class="event-category">Общее</span>
+                    {% endif %}
+
+                    <span class="event-date-badge">
+                        <i class="far fa-calendar-alt"></i> {{ event.date|date:"d.m.Y" }}
+                    </span>
+                </div>
+
+                <div class="event-card-body">
+                    <h3>{{ event.title }}</h3>
+                    <p class="event-description">{{ event.description|default:"Описание отсутствует"|truncatewords:20 }}</p>
+
+                    <div class="event-meta">
+                        <span>
+                            <i class="far fa-clock"></i>
+                            {% if event.start_time and event.end_time %}
+                                {{ event.start_time|time:"H:i" }} – {{ event.end_time|time:"H:i" }}
+                            {% elif event.start_time %}
+                                Начало в {{ event.start_time|time:"H:i" }}
+                            {% elif event.end_time %}
+                                До {{ event.end_time|time:"H:i" }}
+                            {% else %}
+                                Время не указано
+                            {% endif %}
+                        </span>
+
+                        <span>
+                            <i class="fas fa-layer-group"></i>
+                            {{ event.department|default:"Для всех отделов" }}
+                        </span>
+                    </div>
+
+                    {% if user|has_any_role:"management,admin" %}
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 16px;">
+                        <a href="{% url 'event_edit' event.pk %}" class="btn-secondary">
+                            <i class="fas fa-edit"></i> Редактировать
+                        </a>
+
+                        <form method="post" action="{% url 'event_delete' event.pk %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-secondary" onclick="return confirm('Удалить событие?');">
+                                <i class="fas fa-trash"></i> Удалить
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <p class="no-events">Нет предстоящих событий</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const searchInput = document.getElementById('event-search');
+    const dateFilter = document.getElementById('date-filter');
+    const applyBtn = document.getElementById('apply-filters');
+    const cards = Array.from(document.querySelectorAll('#events-container .event-card'));
+
+    function startOfToday() {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        return now;
+    }
+
+    function endOfWeek() {
+        const now = startOfToday();
+        const day = now.getDay();
+        const diff = day === 0 ? 6 : day - 1;
+        now.setDate(now.getDate() - diff + 6);
+        now.setHours(23, 59, 59, 999);
+        return now;
+    }
+
+    function endOfMonth() {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+
+    function matchesDateFilter(card, filterValue) {
+        if (filterValue === 'all') return true;
+
+        const rawDate = card.dataset.date;
+        if (!rawDate) return true;
+
+        const eventDate = new Date(rawDate + 'T00:00:00');
+        const today = startOfToday();
+
+        if (filterValue === 'today') {
+            return eventDate.getTime() === today.getTime();
+        }
+
+        if (filterValue === 'week') {
+            return eventDate >= today && eventDate <= endOfWeek();
+        }
+
+        if (filterValue === 'month') {
+            return eventDate >= today && eventDate <= endOfMonth();
+        }
+
+        if (filterValue === 'future') {
+            return eventDate >= today;
+        }
+
+        return true;
+    }
+
+    function applyFilters() {
+        const query = (searchInput?.value || '').trim().toLowerCase();
+        const filterValue = dateFilter?.value || 'all';
+
+        cards.forEach(card => {
+            const text = card.innerText.toLowerCase();
+            const textMatch = !query || text.includes(query);
+            const dateMatch = matchesDateFilter(card, filterValue);
+
+            card.style.display = (textMatch && dateMatch) ? '' : 'none';
+        });
+    }
+
+    if (applyBtn) {
+        applyBtn.addEventListener('click', applyFilters);
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener('input', applyFilters);
+    }
+})();
+</script>
+{% endblock %}

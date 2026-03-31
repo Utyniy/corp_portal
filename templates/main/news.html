@@ -1,0 +1,199 @@
+{% extends 'main/base.html' %}
+{% load static %}
+{% load roles %}
+
+{% block title %}Новости компании{% endblock %}
+
+{% block content %}
+<main class="main-content news-page">
+    <div class="container">
+        <div class="news-page-title">
+            <h1><i class="fas fa-newspaper"></i> Новости компании</h1>
+            <p>Актуальные события и важные объявления</p>
+        </div>
+
+        {% if user|has_any_role:"editor,management,admin" %}
+        <section class="news-section editor-tools-section">
+            <div class="news-section-header">
+                <h2><i class="fas fa-edit"></i> Инструментарий редактора</h2>
+                <p>Инструменты для создания и управления новостями</p>
+            </div>
+            <div class="editor-tools-grid">
+                <div class="editor-tool-card">
+                    <div class="editor-tool-icon"><i class="fas fa-plus-circle"></i></div>
+                    <h3>Создать новость</h3>
+                    <p>Добавить новую статью</p>
+                    <a href="{% url 'news_create' %}" class="editor-tool-btn primary">
+                        <i class="fas fa-plus"></i> Создать
+                    </a>
+                </div>
+                <div class="editor-tool-card">
+                    <div class="editor-tool-icon"><i class="fas fa-edit"></i></div>
+                    <h3>Редактировать</h3>
+                    <p>Редактирование доступно из карточек новостей</p>
+                    <button class="editor-tool-btn secondary" type="button" disabled>
+                        <i class="fas fa-pencil-alt"></i> Редактировать
+                    </button>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <section class="news-section current-news-section">
+            <div class="news-section-header">
+                <h2><i class="fas fa-bullhorn"></i> Актуальные новости компании</h2>
+                <p>Самые свежие и важные события</p>
+            </div>
+
+            <form method="get" action="." class="archive-controls" style="margin-bottom: 24px;">
+                <div class="archive-search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" name="search" placeholder="Поиск по новостям..." value="{{ search_query }}">
+                </div>
+                <div class="archive-filter-controls">
+                    <select name="category" class="archive-filter-select">
+                        <option value="all" {% if current_category == 'all' %}selected{% endif %}>Все категории</option>
+                        {% for value, label in category_choices %}
+                            <option value="{{ value }}" {% if current_category == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <select name="sort" class="archive-filter-select">
+                        <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>Сначала новые</option>
+                        <option value="oldest" {% if current_sort == 'oldest' %}selected{% endif %}>Сначала старые</option>
+                        <option value="popular" {% if current_sort == 'popular' %}selected{% endif %}>По популярности</option>
+                    </select>
+                    <button type="submit" class="archive-filter-btn">
+                        <i class="fas fa-filter"></i> Применить
+                    </button>
+                </div>
+            </form>
+
+            <div class="current-news-grid">
+                {% if featured_news %}
+                <div class="current-main-news featured-news">
+                    <div class="current-news-image">
+                        {% if featured_news.image %}
+                            <img src="{{ featured_news.image.url }}" alt="{{ featured_news.title }}">
+                        {% else %}
+                            <div class="current-image-placeholder">
+                                <i class="fas fa-image"></i>
+                                <span>Фото новости</span>
+                            </div>
+                        {% endif %}
+                        {% if featured_news.published_at|date:"Ymd" == now|date:"Ymd" %}
+                            <div class="current-news-badge hot">Горячая</div>
+                        {% endif %}
+                    </div>
+                    <div class="current-news-content">
+                        <div class="current-news-meta">
+                            <span class="current-news-category {{ featured_news.category }}">
+                                {{ featured_news.get_category_display }}
+                            </span>
+                            <span class="current-news-date">
+                                <i class="far fa-clock"></i> {{ featured_news.published_at|date:"d.m.Y H:i" }}
+                            </span>
+                        </div>
+                        <h3>{{ featured_news.title }}</h3>
+                        <p>{{ featured_news.content|truncatewords:40 }}</p>
+                        <div class="current-news-footer">
+                            <div class="current-news-stats">
+                                <span><i class="far fa-eye"></i> {{ featured_news.views_count }}</span>
+                            </div>
+                            <div class="current-news-actions">
+                                <a href="{% url 'news_detail' featured_news.id %}" class="current-read-more">
+                                    Читать далее <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% for news in recent_news %}
+                <div class="news-item-card">
+                    <div class="news-item-header">
+                        <div class="current-news-meta">
+                            <span class="current-news-category {{ news.category }}">
+                                {{ news.get_category_display }}
+                            </span>
+                            <span class="current-news-date">
+                                <i class="far fa-clock"></i> {{ news.published_at|date:"d.m.Y" }}
+                            </span>
+                        </div>
+                        {% if user|has_any_role:"editor,management,admin" %}
+                        <div class="news-item-menu" title="Редактировать" onclick="location.href='{% url 'news_edit' news.id %}'">
+                            <i class="fas fa-edit"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="news-item-content">
+                        <h3>{{ news.title }}</h3>
+                        <p>{{ news.content|truncatewords:20 }}</p>
+                    </div>
+                    <div class="news-item-footer">
+                        <div class="news-item-author">
+                            <div class="news-author-avatar">
+                                {% if news.author %}
+                                    {{ news.author.first_name|first|default:news.author.username|first|upper }}
+                                {% else %}
+                                    А
+                                {% endif %}
+                            </div>
+                            <span>
+                                {% if news.author %}
+                                    {{ news.author.get_full_name|default:news.author.username }}
+                                {% else %}
+                                    Администратор
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="current-news-stats">
+                            <span><i class="far fa-eye"></i> {{ news.views_count }}</span>
+                        </div>
+                    </div>
+                    <div class="news-item-actions">
+                        <a href="{% url 'news_detail' news.id %}" class="current-news-btn" title="Открыть">
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+                {% empty %}
+                <p>Пока нет актуальных новостей.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="news-section archive-news-section">
+            <div class="news-section-header">
+                <h2><i class="fas fa-list"></i> Ещё новости</h2>
+                <p>Более ранние публикации в компактном виде</p>
+            </div>
+
+            <div class="archive-grid" id="archive-news-grid">
+                {% for news in news_list %}
+                <div class="archive-card">
+                    <div class="archive-card-header">
+                        <span class="archive-category {{ news.category }}">{{ news.get_category_display }}</span>
+                        <span class="archive-date">{{ news.published_at|date:"d.m.Y" }}</span>
+                        {% if user|has_any_role:"editor,management,admin" %}
+                        <a href="{% url 'news_edit' news.id %}" class="archive-edit-icon" title="Редактировать">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                    <div class="archive-card-content">
+                        <h3>{{ news.title }}</h3>
+                        <p>{{ news.content|truncatewords:12 }}</p>
+                    </div>
+                    <div class="archive-card-footer">
+                        <a href="{% url 'news_detail' news.id %}" class="btn-secondary">Открыть</a>
+                    </div>
+                </div>
+                {% empty %}
+                <p>Новостей не найдено.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</main>
+{% endblock %}

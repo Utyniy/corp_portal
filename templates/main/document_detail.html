@@ -1,0 +1,87 @@
+{% extends 'main/base.html' %}
+{% load static %}
+{% load roles %}
+
+{% block title %}{{ document.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-title">
+        <h1><i class="fas fa-file-alt"></i> {{ document.title }}</h1>
+        <p>Карточка документа</p>
+    </div>
+
+    <div class="task-card" style="max-width: 1000px; margin: 0 auto 40px;">
+        <div class="tasks-card-header">
+            <div class="tasks-card-title">
+                <h2>{{ document.title }}</h2>
+            </div>
+        </div>
+
+        <div class="tasks-card-content">
+            <div style="display:grid; gap:12px; margin-bottom: 24px;">
+                <p><strong>Отдел:</strong> {{ document.department|default:"Общий доступ" }}</p>
+                <p><strong>Дата загрузки:</strong> {{ document.uploaded_at|date:"d.m.Y H:i" }}</p>
+                <p><strong>Загрузил:</strong>
+                    {% if document.uploaded_by %}
+                        {{ document.uploaded_by.get_full_name|default:document.uploaded_by.username }}
+                    {% else %}
+                        Неизвестно
+                    {% endif %}
+                </p>
+                {% if document.file %}
+                <p><strong>Файл:</strong> {{ document.file.name|cut:"documents/" }}</p>
+                <p><strong>Размер:</strong> {{ document.file.size|filesizeformat }}</p>
+                {% endif %}
+            </div>
+
+            {% if document.file %}
+            <div style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 12px;">Предпросмотр</h3>
+
+                {% with file_name=document.file.name|lower %}
+                    {% if ".pdf" in file_name %}
+                        <iframe src="{{ document.file.url }}" style="width:100%; height:700px; border:1px solid #ddd; border-radius:12px;"></iframe>
+                    {% elif ".png" in file_name or ".jpg" in file_name or ".jpeg" in file_name or ".webp" in file_name %}
+                        <img src="{{ document.file.url }}" alt="{{ document.title }}" style="max-width:100%; border-radius:12px;">
+                    {% else %}
+                        <div class="card" style="padding:20px;">
+                            <p>Для этого типа файла встроенный предпросмотр недоступен.</p>
+                            <p>Используйте кнопки “Открыть” или “Скачать”.</p>
+                        </div>
+                    {% endif %}
+                {% endwith %}
+            </div>
+            {% endif %}
+
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                {% if document.file %}
+                <a href="{{ document.file.url }}" class="btn-primary" target="_blank">
+                    <i class="fas fa-eye"></i> Открыть
+                </a>
+                <a href="{{ document.file.url }}" class="btn-secondary" download>
+                    <i class="fas fa-download"></i> Скачать
+                </a>
+                {% endif %}
+
+                {% if user|has_any_role:"management,admin" %}
+                <a href="{% url 'document_edit' document.pk %}" class="btn-secondary">
+                    <i class="fas fa-edit"></i> Редактировать
+                </a>
+
+                <form method="post" action="{% url 'document_delete' document.pk %}" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-secondary" onclick="return confirm('Удалить документ?');">
+                        <i class="fas fa-trash"></i> Удалить
+                    </button>
+                </form>
+                {% endif %}
+
+                <a href="{% url 'documents' %}" class="btn-secondary">
+                    Назад
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

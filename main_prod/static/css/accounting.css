@@ -1,0 +1,225 @@
+/* ==================== СТРАНИЦА БУХГАЛТЕРИИ ==================== */
+
+.accounting-page {
+    background: var(--light-bg);
+    padding: 30px 0 50px;
+    min-height: calc(100vh - 200px);
+}
+
+.accounting-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 25px;
+    margin-top: 30px;
+}
+
+.accounting-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: all 0.3s;
+    display: flex;
+    flex-direction: column;
+}
+
+.accounting-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-hover);
+}
+
+.accounting-card .card-header {
+    background: linear-gradient(135deg, #f8fafc, #edf2f7);
+    border-bottom: 1px solid var(--border);
+}
+
+.accounting-card .card-title i {
+    color: var(--primary);
+}
+
+.accounting-card .card-content {
+    padding: 20px;
+    flex: 1;
+}
+
+/* Формы внутри карточек */
+.accounting-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.accounting-form .form-group {
+    margin-bottom: 0;
+}
+
+.accounting-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.accounting-form label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+}
+
+.accounting-form .form-control {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+    background: white;
+}
+
+.accounting-form .form-control:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(26,58,143,0.1);
+}
+
+.accounting-form .form-control[disabled] {
+    background: #f1f5f9;
+    cursor: not-allowed;
+}
+
+.accounting-form .form-result {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: linear-gradient(135deg, #f0f4ff, #e6eeff);
+    border-radius: 8px;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.accounting-form .form-result strong {
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+
+.btn-block {
+    width: 100%;
+    margin-top: 5px;
+}
+
+/* Информационный блок (налоги) */
+.info-block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px dashed var(--border);
+}
+
+.info-row.total {
+    border-top: 2px solid var(--border);
+    border-bottom: none;
+    padding-top: 12px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+/* Список отчётов */
+.report-list {
+    list-style: none;
+    margin-bottom: 20px;
+}
+
+.report-list li {
+    margin-bottom: 10px;
+}
+
+.report-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--light-bg);
+    border-radius: 8px;
+    color: var(--text-dark);
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.report-link:hover {
+    background: #e6eeff;
+    transform: translateX(4px);
+    color: var(--primary);
+}
+
+.report-link i {
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+
+/* История расчётов */
+.history-list {
+    list-style: none;
+}
+
+.history-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-light);
+}
+
+.history-list li:last-child {
+    border-bottom: none;
+}
+
+.history-list i {
+    color: var(--success);
+    width: 20px;
+}
+
+.history-list i.fa-hourglass-half {
+    color: var(--warning);
+}
+
+/* Адаптация */
+@media (max-width: 768px) {
+    .accounting-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .accounting-form .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+/* Ссылка скачивания расчётного листа */
+.download-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--success);
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.download-link:hover {
+    background: #5cb85c;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(92, 184, 92, 0.3);
+}

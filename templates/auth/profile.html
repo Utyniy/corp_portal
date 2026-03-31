@@ -1,0 +1,28 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Профиль{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-title">
+        <h1>Профиль</h1>
+        <p>Личные данные и безопасность</p>
+    </div>
+
+    <div class="card">
+        <div class="card-content">
+            <p><strong>Логин:</strong> {{ user.username }}</p>
+            <p><strong>Имя:</strong> {{ user.first_name|default:"—" }}</p>
+            <p><strong>Фамилия:</strong> {{ user.last_name|default:"—" }}</p>
+            <p><strong>Email:</strong> {{ user.email|default:"—" }}</p>
+            <p><strong>Роль:</strong> {{ user.get_role_display }}</p>
+            <p><strong>Отдел:</strong> {{ user.department|default:"—" }}</p>
+
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <a href="{% url 'profile_edit' %}" class="btn-primary">Редактировать профиль</a>
+                <a href="{% url 'change_password' %}" class="btn-secondary">Сменить пароль</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,505 @@
+{% extends 'main/base.html' %}
+{% load static %}
+
+{% block title %}Корпоративный портал{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-title">
+        <h1>Рабочий стол</h1>
+        <p>Добро пожаловать в корпоративный портал</p>
+    </div>
+
+    <div class="cards-grid">
+        <!-- Левая колонка -->
+        <div class="left-column">
+            {% if featured_news %}
+            <div class="card featured-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-bullhorn"></i>
+                        <h2>Актуальная новость</h2>
+                    </div>
+                    <div class="card-badge new">Новое</div>
+                </div>
+                <div class="card-content">
+                    <h3>{{ featured_news.title }}</h3>
+                    <p>{{ featured_news.content|truncatewords:30 }}</p>
+                    <div class="news-meta">
+                        <span><i class="far fa-clock"></i> {{ featured_news.published_at|timesince }} назад</span>
+                        <span><i class="fas fa-user"></i>
+                            {% if featured_news.author %}
+                                {{ featured_news.author.get_full_name|default:featured_news.author.username }}
+                            {% else %}
+                                Администратор
+                            {% endif %}
+                        </span>
+                    </div>
+                    <a href="{% url 'news_detail' featured_news.pk %}" class="btn-primary" style="margin-top: 15px; display:inline-block;">
+                        Читать далее
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="far fa-calendar-alt"></i>
+                        <h2>Календарь и таймтрекер</h2>
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="calendar-widget">
+                        <div class="calendar-header">
+                            <span>{{ month_name_ru }} {{ year }}</span>
+                            <div class="calendar-nav">
+                                <a href="?year={{ prev_year }}&month={{ prev_month }}" class="nav-btn" title="Предыдущий месяц">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                                <a href="?year={{ current_year }}&month={{ current_month }}" class="today-btn">Сегодня</a>
+                                <a href="?year={{ next_year }}&month={{ next_month }}" class="nav-btn" title="Следующий месяц">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="calendar-grid">
+                            {% for day in weekdays %}
+                                <div class="day">{{ day }}</div>
+                            {% endfor %}
+
+                            {% for week in month_days %}
+                                {% for day in week %}
+                                    {% if day == 0 %}
+                                        <div class="date inactive"></div>
+                                    {% else %}
+                                        <div class="date{% if day == today_day %} today{% endif %}">
+                                            {{ day }}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="time-tracker">
+                        <div class="tracker-info">
+                            <span>Рабочее время сегодня:</span>
+                            <span class="tracker-time" id="worked-time">{{ worked_today_formatted }}</span>
+                        </div>
+                        <div class="tracker-progress">
+                            <div class="progress-bar">
+                                <div class="progress" id="work-progress" style="width: {{ worked_percent }}%"></div>
+                            </div>
+                            <span id="work-percent">{{ worked_percent }}%</span>
+                        </div>
+                        <div class="tracker-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button id="start-work-btn" class="btn-primary" style="flex: 1;" type="button">Начать день</button>
+                            <button id="end-work-btn" class="btn-secondary" style="flex: 1;" type="button">Завершить день</button>
+                        </div>
+                        <div id="work-message" style="margin-top: 10px; font-size: 0.85rem; text-align: center; display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Центральная колонка -->
+        <div class="center-column">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="far fa-clock"></i>
+                        <h2>Ближайшие события</h2>
+                    </div>
+                    <a href="{% url 'events' %}" class="card-link">Все события</a>
+                </div>
+                <div class="card-content">
+                    <div class="events-list">
+                        {% for event in event_list|slice:":4" %}
+                        <div class="event-item">
+                            <div class="event-date">
+                                <span class="event-day">{{ event.date|date:"j" }}</span>
+                                <span class="event-month">{{ event.date|date:"M"|upper }}</span>
+                            </div>
+                            <div class="event-details">
+                                <h4>{{ event.title }}</h4>
+                                <p>
+                                    <i class="far fa-clock"></i>
+                                    {% if event.start_time and event.end_time %}
+                                        {{ event.start_time|time:"H:i" }} — {{ event.end_time|time:"H:i" }}
+                                    {% elif event.end_time %}
+                                        До {{ event.end_time|time:"H:i" }}
+                                    {% elif event.start_time %}
+                                        Начало в {{ event.start_time|time:"H:i" }}
+                                    {% else %}
+                                        Время не указано
+                                    {% endif %}
+                                </p>
+                                <p><i class="fas fa-map-marker-alt"></i> {{ event.location|default:"Место не указано" }}</p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="no-events">Нет ближайших событий</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Меняем блок на прогресс задач -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-chart-line"></i>
+                        <h2>Прогресс задач</h2>
+                    </div>
+                    <div class="card-badge" id="report-badge">
+                        {% if report_progress == 100 %}Готово{% else %}В процессе{% endif %}
+                    </div>
+                </div>
+                <div class="card-content">
+                    <div class="report-progress" style="margin-bottom: 20px;">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{ report_progress }}%;"></div>
+                            </div>
+                            <span class="progress-percent">{{ report_progress }}%</span>
+                        </div>
+                    </div>
+
+                    <div class="report-steps">
+                        <div class="report-step {% if report_progress >= 25 %}completed{% elif report_progress > 0 %}active{% else %}pending{% endif %}">
+                            <div class="step-indicator">{% if report_progress >= 25 %}<i class="fas fa-check"></i>{% else %}1{% endif %}</div>
+                            <div class="step-info">
+                                <h4>Запуск</h4>
+                                <p>Первые задачи взяты в работу</p>
+                            </div>
+                        </div>
+
+                        <div class="report-step {% if report_progress >= 50 %}completed{% elif report_progress >= 25 %}active{% else %}pending{% endif %}">
+                            <div class="step-indicator">{% if report_progress >= 50 %}<i class="fas fa-check"></i>{% else %}2{% endif %}</div>
+                            <div class="step-info">
+                                <h4>Стабильный прогресс</h4>
+                                <p>Задачи выполняются по плану</p>
+                            </div>
+                        </div>
+
+                        <div class="report-step {% if report_progress >= 75 %}completed{% elif report_progress >= 50 %}active{% else %}pending{% endif %}">
+                            <div class="step-indicator">{% if report_progress >= 75 %}<i class="fas fa-check"></i>{% else %}3{% endif %}</div>
+                            <div class="step-info">
+                                <h4>Финишная стадия</h4>
+                                <p>Остались завершающие задачи</p>
+                            </div>
+                        </div>
+
+                        <div class="report-step {% if report_progress >= 100 %}completed{% elif report_progress >= 75 %}active{% else %}pending{% endif %}">
+                            <div class="step-indicator">{% if report_progress >= 100 %}<i class="fas fa-check"></i>{% else %}4{% endif %}</div>
+                            <div class="step-info">
+                                <h4>Завершено</h4>
+                                <p>Все задачи закрыты</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <a href="{% url 'task' %}" class="btn-primary" style="margin-top: 20px; display: block; text-align: center;">
+                        <i class="fas fa-tasks"></i> Перейти к задачам
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка -->
+        <div class="right-column">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-newspaper"></i>
+                        <h2>Новости компании</h2>
+                    </div>
+                    <div class="card-badge">{{ recent_news|length }}</div>
+                </div>
+                <div class="card-content">
+                    <div class="news-list">
+                        {% for news in recent_news %}
+                        <div class="news-item">
+                            <div class="news-icon">
+                                {% if news.category == 'corporate' %}
+                                    <i class="fas fa-building"></i>
+                                {% elif news.category == 'events' %}
+                                    <i class="fas fa-calendar-alt"></i>
+                                {% elif news.category == 'hr' %}
+                                    <i class="fas fa-users"></i>
+                                {% elif news.category == 'tech' %}
+                                    <i class="fas fa-microchip"></i>
+                                {% else %}
+                                    <i class="fas fa-newspaper"></i>
+                                {% endif %}
+                            </div>
+                            <div class="news-content">
+                                <h4>{{ news.title }}</h4>
+                                <p>{{ news.content|truncatewords:15 }}</p>
+                                <span class="news-date">{{ news.published_at|date:"d.m.Y" }}</span>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="news-item">
+                            <div class="news-content">
+                                <p>Новостей пока нет.</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a href="{% url 'news' %}" class="see-all-link">
+                        <i class="fas fa-arrow-right"></i> Все новости
+                    </a>
+                </div>
+            </div>
+
+            <!-- Возвращаем Мои задачи -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-tasks"></i>
+                        <h2>Мои задачи</h2>
+                    </div>
+                    <a href="{% url 'task' %}" class="card-link">{{ tasks|length }}</a>
+                </div>
+                <div class="card-content">
+                    <div class="tasks-list">
+                        {% for task in tasks %}
+                        <div class="task-item priority-{{ task.priority }}">
+                            <div class="task-checkbox">
+                                <input type="checkbox" id="task-{{ task.id }}">
+                                <label for="task-{{ task.id }}"></label>
+                            </div>
+                            <div class="task-content">
+                                <h4>{{ task.title }}</h4>
+                                <p>
+                                    Дедлайн:
+                                    {% if task.deadline %}
+                                        {{ task.deadline|date:"d.m.Y H:i" }}
+                                    {% else %}
+                                        Не указан
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p>Нет активных задач</p>
+                        {% endfor %}
+                    </div>
+                    <a href="{% url 'task_create' %}" class="btn-secondary">
+                        <i class="fas fa-plus"></i> Добавить задачу
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Нижний ряд карточек -->
+    <div class="bottom-row">
+        <div class="card documents-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-file-alt"></i>
+                    <h2>Последние документы</h2>
+                </div>
+                <a href="{% url 'documents' %}" class="card-link">Все документы</a>
+            </div>
+            <div class="card-content">
+                <div class="documents-list">
+                    {% for doc in recent_docs %}
+                    <div class="document-item">
+                        <div class="doc-icon">
+                            {% with file_name=doc.file.name|lower %}
+                                {% if ".pdf" in file_name %}
+                                    <i class="fas fa-file-pdf"></i>
+                                {% elif ".doc" in file_name %}
+                                    <i class="fas fa-file-word"></i>
+                                {% elif ".xls" in file_name %}
+                                    <i class="fas fa-file-excel"></i>
+                                {% else %}
+                                    <i class="fas fa-file-alt"></i>
+                                {% endif %}
+                            {% endwith %}
+                        </div>
+                        <div class="doc-content">
+                            <h3>{{ doc.title }}</h3>
+                            <div class="doc-meta">
+                                <span class="doc-department">{{ doc.department|default:"Общий" }}</span>
+                                <span class="doc-separator">•</span>
+                                <span class="doc-date">{{ doc.uploaded_at|date:"d.m.Y" }}</span>
+                            </div>
+                        </div>
+                        <div class="doc-actions">
+                            {% if doc.file %}
+                                <a href="{{ doc.file.url }}" class="doc-btn" download><i class="fas fa-download"></i></a>
+                                <a href="{{ doc.file.url }}" class="doc-btn" target="_blank"><i class="fas fa-eye"></i></a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if not forloop.last %}
+                    <div class="doc-separator-line"></div>
+                    {% endif %}
+                    {% empty %}
+                    <p>Нет документов</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Возвращаем старую оргструктуру -->
+        <div class="card org-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i class="fas fa-sitemap"></i>
+                    <h2>Организационная структура</h2>
+                </div>
+                <a href="#" class="card-link">Подробнее</a>
+            </div>
+            <div class="card-content">
+                <div class="org-chart">
+                    <div class="org-level top-level">
+                        <div class="org-node ceo">
+                            <div class="node-avatar">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="node-info">
+                                <h4>Алексей Петров</h4>
+                                <p>Генеральный директор</p>
+                                <span class="node-email">a.petrov@company.ru</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="org-level middle-level">
+                        <div class="org-node">
+                            <div class="node-avatar">АС</div>
+                            <div class="node-info">
+                                <h4>Анна Смирнова</h4>
+                                <p>Финансовый директор</p>
+                                <span class="node-department">Бухгалтерия • Финансы</span>
+                            </div>
+                        </div>
+                        <div class="org-node">
+                            <div class="node-avatar">ИК</div>
+                            <div class="node-info">
+                                <h4>Иван Козлов</h4>
+                                <p>Технический директор</p>
+                                <span class="node-department">Разработка • IT</span>
+                            </div>
+                        </div>
+                        <div class="org-node">
+                            <div class="node-avatar">ОН</div>
+                            <div class="node-info">
+                                <h4>Ольга Новикова</h4>
+                                <p>Директор по маркетингу</p>
+                                <span class="node-department">Маркетинг • Продажи</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="org-level bottom-level">
+                        <div class="org-sublevel">
+                            <div class="org-node small">
+                                <div class="node-avatar small">МП</div>
+                                <div class="node-info">
+                                    <h4>Мария Петрова</h4>
+                                    <p>Главный бухгалтер</p>
+                                </div>
+                            </div>
+                            <div class="org-node small">
+                                <div class="node-avatar small">СИ</div>
+                                <div class="node-info">
+                                    <h4>Сергей Иванов</h4>
+                                    <p>Руководитель IT</p>
+                                </div>
+                            </div>
+                            <div class="org-node small">
+                                <div class="node-avatar small">ЕК</div>
+                                <div class="node-info">
+                                    <h4>Елена Ковалева</h4>
+                                    <p>Руководитель отдела продаж</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+(function () {
+    const csrfToken =
+        document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+        document.querySelector('meta[name="csrf-token"]')?.content;
+
+    const workedTimeEl = document.getElementById("worked-time");
+    const workPercentEl = document.getElementById("work-percent");
+    const workProgressEl = document.getElementById("work-progress");
+    const messageEl = document.getElementById("work-message");
+    const startBtn = document.getElementById("start-work-btn");
+    const endBtn = document.getElementById("end-work-btn");
+
+    async function postAction(url) {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken,
+                "X-Requested-With": "XMLHttpRequest"
+            }
+        });
+        return response.json();
+    }
+
+    async function refreshWorkTime() {
+        try {
+            const response = await fetch("{% url 'get_work_time' %}", {
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            });
+            const data = await response.json();
+
+            if (data.status === "success") {
+                const totalSeconds = data.worked_today.total_seconds;
+                const formatted = data.worked_today.formatted;
+                const percent = Math.min(100, Math.floor((totalSeconds / (8 * 3600)) * 100));
+
+                if (workedTimeEl) workedTimeEl.textContent = formatted;
+                if (workPercentEl) workPercentEl.textContent = percent + "%";
+                if (workProgressEl) workProgressEl.style.width = percent + "%";
+            }
+        } catch (e) {
+            console.error("Ошибка обновления таймера", e);
+        }
+    }
+
+    if (startBtn) {
+        startBtn.addEventListener("click", async function () {
+            const data = await postAction("{% url 'start_work' %}");
+            if (messageEl) {
+                messageEl.style.display = "block";
+                messageEl.textContent = data.message || data.error || "";
+            }
+            refreshWorkTime();
+        });
+    }
+
+    if (endBtn) {
+        endBtn.addEventListener("click", async function () {
+            const data = await postAction("{% url 'end_work' %}");
+            if (messageEl) {
+                messageEl.style.display = "block";
+                messageEl.textContent = data.message || data.error || "";
+            }
+            refreshWorkTime();
+        });
+    }
+
+    refreshWorkTime();
+    setInterval(refreshWorkTime, 1000);
+})();
+</script>
+{% endblock %}
+{% endblock %}

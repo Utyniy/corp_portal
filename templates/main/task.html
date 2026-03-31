@@ -1,0 +1,350 @@
+{% extends 'main/base.html' %}
+{% load static %}
+{% load roles %}
+
+{% block title %}Планировщик задач{% endblock %}
+
+{% block content %}
+<main class="main-content tasks-page">
+    <div class="container">
+        <div class="tasks-page-header">
+            <h1><i class="fas fa-tasks"></i> Планировщик задач</h1>
+            <p>Ваши задачи и документы</p>
+        </div>
+
+        <div class="tasks-grid">
+            <div class="tasks-card">
+                <div class="tasks-card-header">
+                    <div class="tasks-card-title">
+                        <i class="fas fa-clipboard-list"></i>
+                        <h2>Мои задачи</h2>
+                    </div>
+                    <div class="tasks-card-badge warning" id="task-counter">{{ tasks|length }} активных</div>
+                </div>
+
+                <div class="tasks-card-content">
+                    <div class="tasks-list" id="tasks-list-container">
+                        {% for task in tasks %}
+                        <div class="task-item priority-{{ task.priority }}" data-task-id="{{ task.id }}" data-complete-url="{% url 'task_complete' task.id %}">
+                            <div class="task-checkbox">
+                                <input type="checkbox" id="task-{{ task.id }}" class="task-select-checkbox">
+                                <label for="task-{{ task.id }}"></label>
+                            </div>
+
+                            <div class="task-content task-complete-trigger" style="cursor:pointer;">
+                                <h4>{{ task.title }}</h4>
+                                <div class="task-meta">
+                                    <span class="task-deadline {% if task.deadline and task.deadline < now %}deadline-urgent{% endif %}">
+                                        <i class="fas fa-clock"></i>
+                                        {% if task.deadline %}
+                                            {{ task.deadline|date:"d.m.Y H:i" }}
+                                        {% else %}
+                                            Без срока
+                                        {% endif %}
+                                    </span>
+
+                                    <span class="task-assignee">
+                                        <span class="assignee-avatar">
+                                            {% if task.assigned_to %}
+                                                {{ task.assigned_to.first_name|slice:":1"|default:task.assigned_to.username|slice:":1"|upper }}
+                                            {% else %}
+                                                <i class="fas fa-user"></i>
+                                            {% endif %}
+                                        </span>
+
+                                        {% if task.assigned_to %}
+                                            {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}
+                                        {% else %}
+                                            Не назначен
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="task-actions">
+                                <a href="{% url 'task_edit' task.pk %}" class="task-btn edit-btn" title="Редактировать" onclick="event.stopPropagation();">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+
+                                <button class="task-btn details-btn task-complete-trigger" type="button" title="Отметить выполненной">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="empty-tasks" id="empty-active-tasks">
+                            <i class="fas fa-check-circle"></i>
+                            <h3>Нет активных задач</h3>
+                            <p>Отличная работа! Все задачи выполнены.</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="quick-actions">
+                        <a href="{% url 'task_create' %}" class="quick-action-btn">
+                            <i class="fas fa-plus-circle"></i> Добавить задачу
+                        </a>
+
+                        <button class="quick-action-btn" type="button">
+                            <i class="fas fa-filter"></i> Фильтры
+                        </button>
+
+                        <button class="quick-action-btn" type="button">
+                            <i class="fas fa-download"></i> Экспорт
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tasks-card">
+                <div class="tasks-card-header">
+                    <div class="tasks-card-title">
+                        <h2>Прогресс</h2>
+                    </div>
+                </div>
+                <div class="tasks-card-content">
+                    <div class="progress-bar">
+                        <div class="progress" id="task-progress-bar" style="width: {{ report_progress }}%"></div>
+                    </div>
+                    <p style="margin-top: 10px;" id="task-progress-text">{{ report_progress }}%</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="tasks-card full-width" style="margin-top: 24px;">
+            <div class="tasks-card-header">
+                <div class="tasks-card-title">
+                    <h2>Архив задач</h2>
+                </div>
+            </div>
+            <div class="tasks-card-content">
+                <div id="archive-tasks-grid">
+                    {% for task in archived_tasks %}
+                        <div class="archive-task-card">
+                            <h3>{{ task.title }}</h3>
+                            <p>{{ task.description|truncatewords:20 }}</p>
+                        </div>
+                    {% empty %}
+                        <p id="empty-archive-tasks">Нет выполненных задач.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="tasks-card full-width" style="margin-top: 24px;">
+    <div class="tasks-card-header">
+        <div class="tasks-card-title">
+            <i class="fas fa-book"></i>
+            <h2>Техническая документация</h2>
+        </div>
+        {% if user.role == 'management' or user.role == 'admin' %}
+            <a href="{% url 'document_create' %}" class="tasks-card-link docs-link">Загрузить →</a>
+        {% endif %}
+    </div>
+
+    <div class="tasks-card-content">
+        <div class="docs-grid" id="docs-grid">
+            {% for doc in docs %}
+            <div class="doc-card">
+                <div class="doc-icon api">
+                    {% with file_name=doc.file.name|lower %}
+                        {% if ".pdf" in file_name %}
+                            <i class="fas fa-file-pdf"></i>
+                        {% elif ".doc" in file_name or ".docx" in file_name %}
+                            <i class="fas fa-file-word"></i>
+                        {% elif ".xls" in file_name or ".xlsx" in file_name %}
+                            <i class="fas fa-file-excel"></i>
+                        {% elif ".ppt" in file_name or ".pptx" in file_name %}
+                            <i class="fas fa-file-powerpoint"></i>
+                        {% elif ".zip" in file_name or ".rar" in file_name %}
+                            <i class="fas fa-file-archive"></i>
+                        {% elif ".txt" in file_name %}
+                            <i class="fas fa-file-lines"></i>
+                        {% else %}
+                            <i class="fas fa-file-alt"></i>
+                        {% endif %}
+                    {% endwith %}
+                </div>
+
+                <div class="doc-content">
+                    <h3>{{ doc.title }}</h3>
+
+                    {% if doc.file %}
+                        <p>Файл: {{ doc.file.name|cut:"documents/" }}</p>
+                    {% else %}
+                        <p>Файл не загружен</p>
+                    {% endif %}
+
+                    <div class="doc-meta">
+                        <span class="doc-format">
+                            <i class="fas fa-building"></i>
+                            {{ doc.department|default:"Общий доступ" }}
+                        </span>
+
+                        <span class="doc-date">
+                            <i class="far fa-clock"></i>
+                            {{ doc.uploaded_at|date:"d.m.Y" }}
+                        </span>
+
+                        {% if doc.file %}
+                        <span class="doc-format">
+                            <i class="fas fa-weight-hanging"></i>
+                            {{ doc.file.size|filesizeformat }}
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    {% if doc.file %}
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px;">
+                        <a href="{% url 'document_detail' doc.pk %}" class="doc-link" target="_blank">
+                            Открыть <i class="fas fa-arrow-right"></i>
+                        </a>
+                        {% if doc.file %}
+                        <a href="{{ doc.file.url }}" class="doc-link" target="_blank">Открыть файл</a>
+                        {% endif %}
+                        <a href="{{ doc.file.url }}" class="doc-link" download>
+                            Скачать <i class="fas fa-download"></i>
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="no-events">Нет документов</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+    </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const csrfToken =
+        document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+        document.querySelector('meta[name="csrf-token"]')?.content;
+
+    const tasksContainer = document.getElementById('tasks-list-container');
+    const archiveContainer = document.getElementById('archive-tasks-grid');
+    const taskCounter = document.getElementById('task-counter');
+    const progressBar = document.getElementById('task-progress-bar');
+    const progressText = document.getElementById('task-progress-text');
+
+    function updateCounters() {
+        const activeTasks = tasksContainer.querySelectorAll('.task-item').length;
+        const archivedTasks = archiveContainer.querySelectorAll('.archive-task-card').length;
+        const total = activeTasks + archivedTasks;
+        const percent = total ? Math.round((archivedTasks / total) * 100) : 0;
+
+        if (taskCounter) {
+            taskCounter.textContent = `${activeTasks} активных`;
+        }
+        if (progressBar) {
+            progressBar.style.width = `${percent}%`;
+        }
+        if (progressText) {
+            progressText.textContent = `${percent}%`;
+        }
+
+        let emptyActive = document.getElementById('empty-active-tasks');
+        if (activeTasks === 0 && !emptyActive) {
+            emptyActive = document.createElement('div');
+            emptyActive.id = 'empty-active-tasks';
+            emptyActive.className = 'empty-tasks';
+            emptyActive.innerHTML = `
+                <i class="fas fa-check-circle"></i>
+                <h3>Нет активных задач</h3>
+                <p>Отличная работа! Все задачи выполнены.</p>
+            `;
+            tasksContainer.appendChild(emptyActive);
+        } else if (activeTasks > 0 && emptyActive) {
+            emptyActive.remove();
+        }
+
+        const emptyArchive = document.getElementById('empty-archive-tasks');
+        if (archivedTasks > 0 && emptyArchive) {
+            emptyArchive.remove();
+        }
+    }
+
+    function createArchiveCard(taskItem) {
+        const title = taskItem.querySelector('h4')?.textContent || 'Задача';
+        const textParts = taskItem.querySelectorAll('.task-meta span');
+        const metaText = Array.from(textParts).map(el => el.textContent.trim()).join(' • ');
+
+        const card = document.createElement('div');
+        card.className = 'archive-task-card';
+        card.innerHTML = `
+            <h3>${title}</h3>
+            <p>${metaText}</p>
+        `;
+        return card;
+    }
+
+    async function completeTask(taskItem, checkbox) {
+        if (!taskItem) return;
+
+        const url = taskItem.dataset.completeUrl;
+        if (!url) return;
+
+        taskItem.style.pointerEvents = 'none';
+        taskItem.style.opacity = '0.6';
+
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            });
+
+            const data = await response.json();
+
+            if (data.status !== 'success') {
+                taskItem.style.pointerEvents = '';
+                taskItem.style.opacity = '';
+                if (checkbox) checkbox.checked = false;
+                return;
+            }
+
+            const archiveCard = createArchiveCard(taskItem);
+            archiveContainer.prepend(archiveCard);
+            taskItem.remove();
+            updateCounters();
+        } catch (e) {
+            taskItem.style.pointerEvents = '';
+            taskItem.style.opacity = '';
+            if (checkbox) checkbox.checked = false;
+            console.error(e);
+        }
+    }
+
+    tasksContainer.addEventListener('change', function (e) {
+        if (e.target.classList.contains('task-select-checkbox')) {
+            const taskItem = e.target.closest('.task-item');
+            if (e.target.checked) {
+                completeTask(taskItem, e.target);
+            }
+        }
+    });
+
+    tasksContainer.addEventListener('click', function (e) {
+        const trigger = e.target.closest('.task-complete-trigger');
+        if (!trigger) return;
+
+        const taskItem = trigger.closest('.task-item');
+        if (!taskItem) return;
+
+        const checkbox = taskItem.querySelector('.task-select-checkbox');
+        if (checkbox && !checkbox.checked) {
+            checkbox.checked = true;
+        }
+
+        completeTask(taskItem, checkbox);
+    });
+})();
+</script>
+{% endblock %}

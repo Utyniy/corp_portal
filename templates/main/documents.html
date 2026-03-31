@@ -1,0 +1,119 @@
+{% extends 'main/base.html' %}
+{% load static %}
+{% load roles %}
+
+{% block title %}Документы{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="page-title">
+        <h1><i class="fas fa-folder-open"></i> Документы</h1>
+        <p>Поиск, фильтрация и просмотр документов компании</p>
+    </div>
+
+    <div style="margin-bottom: 20px; display:flex; gap:10px; flex-wrap:wrap;">
+        {% if user|has_any_role:"management,admin" %}
+            <a href="{% url 'document_create' %}" class="btn-primary">
+                <i class="fas fa-upload"></i> Загрузить документ
+            </a>
+        {% endif %}
+    </div>
+
+    <form method="get" class="archive-controls" style="margin-bottom: 24px;">
+        <div class="archive-search-box">
+            <i class="fas fa-search"></i>
+            <input type="text" name="search" placeholder="Поиск по названию, файлу, отделу..." value="{{ search_query }}">
+        </div>
+
+        <div class="archive-filter-controls">
+            <select name="department" class="archive-filter-select">
+                <option value="">Все отделы</option>
+                {% for department in departments %}
+                    <option value="{{ department }}" {% if current_department == department %}selected{% endif %}>
+                        {{ department }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="archive-filter-btn">
+                <i class="fas fa-filter"></i> Применить
+            </button>
+
+            <a href="{% url 'documents' %}" class="btn-secondary">
+                Сбросить
+            </a>
+        </div>
+    </form>
+
+    <div class="docs-grid">
+        {% for doc in documents %}
+        <div class="doc-card">
+            <div class="doc-icon api">
+                {% with file_name=doc.file.name|lower %}
+                    {% if ".pdf" in file_name %}
+                        <i class="fas fa-file-pdf"></i>
+                    {% elif ".doc" in file_name or ".docx" in file_name %}
+                        <i class="fas fa-file-word"></i>
+                    {% elif ".xls" in file_name or ".xlsx" in file_name %}
+                        <i class="fas fa-file-excel"></i>
+                    {% elif ".ppt" in file_name or ".pptx" in file_name %}
+                        <i class="fas fa-file-powerpoint"></i>
+                    {% elif ".zip" in file_name or ".rar" in file_name %}
+                        <i class="fas fa-file-archive"></i>
+                    {% elif ".png" in file_name or ".jpg" in file_name or ".jpeg" in file_name or ".webp" in file_name %}
+                        <i class="fas fa-file-image"></i>
+                    {% else %}
+                        <i class="fas fa-file-alt"></i>
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <div class="doc-content">
+                <h3>{{ doc.title }}</h3>
+                <p>Файл: {{ doc.file.name|cut:"documents/" }}</p>
+
+                <div class="doc-meta">
+                    <span class="doc-format">
+                        <i class="fas fa-building"></i>
+                        {{ doc.department|default:"Общий доступ" }}
+                    </span>
+                    <span class="doc-date">
+                        <i class="far fa-clock"></i>
+                        {{ doc.uploaded_at|date:"d.m.Y" }}
+                    </span>
+                    {% if doc.file %}
+                    <span class="doc-format">
+                        <i class="fas fa-weight-hanging"></i>
+                        {{ doc.file.size|filesizeformat }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px;">
+                    <a href="{% url 'document_detail' doc.pk %}" class="doc-link">
+                        Подробнее <i class="fas fa-arrow-right"></i>
+                    </a>
+
+                    {% if doc.file %}
+                    <a href="{{ doc.file.url }}" class="doc-link" target="_blank">
+                        Открыть
+                    </a>
+                    <a href="{{ doc.file.url }}" class="doc-link" download>
+                        Скачать
+                    </a>
+                    {% endif %}
+
+                    {% if user|has_any_role:"management,admin" %}
+                    <a href="{% url 'document_edit' doc.pk %}" class="doc-link">
+                        Редактировать
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="no-events">Документы не найдены</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
