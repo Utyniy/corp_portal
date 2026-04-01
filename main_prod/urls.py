@@ -28,5 +28,6 @@ urlpatterns = [
     path("work/start/", views.start_work, name="start_work"),
     path("work/end/", views.end_work, name="end_work"),
     path("work/time/", views.get_work_time, name="get_work_time"),
+
     path("org-structure/<slug:slug>/", views.department_page, name="department_page"),
 ]

@@ -12,7 +12,6 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link rel="stylesheet" href="{% static 'css/news.css' %}">
     <link rel="stylesheet" href="{% static 'css/task.css' %}">
-    <link rel="stylesheet" href="{% static 'css/accounting.css' %}">
     <link rel="stylesheet" href="{% static 'css/events.css' %}">
     <link rel="stylesheet" href="{% static 'css/login.css' %}">
 
@@ -60,9 +59,7 @@
                         <li><a href="{% url 'department_page' 'management' %}" class="dropdown-item"><i class="fas fa-chart-line"></i> Управление</a></li>
                         <li><a href="{% url 'department_page' 'development' %}" class="dropdown-item"><i class="fas fa-code"></i> Разработка</a></li>
                         <li><a href="{% url 'department_page' 'marketing' %}" class="dropdown-item"><i class="fas fa-chart-bar"></i> Маркетинг</a></li>
-                        {% if user|has_any_role:"accountant,management,admin" %}
                         <li><a href="{% url 'department_page' 'accounting' %}" class="dropdown-item"><i class="fas fa-calculator"></i> Бухгалтерия</a></li>
-                        {% endif %}
                         <li><a href="{% url 'department_page' 'hr' %}" class="dropdown-item"><i class="fas fa-users"></i> HR</a></li>
                     </ul>
                 </li>
@@ -80,27 +77,34 @@
         </nav>
 
         <div class="user-info">
-            {% if user.is_authenticated %}
-                <div class="user-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div class="user-details">
-                    <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
-                    <span class="user-role">{{ user.get_role_display|default:"Сотрудник" }}</span>
-                    {% if user.department %}
-                        <span class="user-department">{{ user.department }}</span>
-                    {% endif %}
-                </div>
-                <form action="{% url 'logout' %}" method="post" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="nav-link" style="background:none;border:none;cursor:pointer;">
-                        <i class="fas fa-sign-out-alt"></i> Выйти
-                    </button>
-                </form>
-            {% else %}
-                <a href="{% url 'login' %}" class="login-link"><i class="fas fa-sign-in-alt"></i> Войти</a>
-            {% endif %}
+    {% if user.is_authenticated %}
+        <div class="user-profile-top">
+            <div class="user-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+
+            <div class="user-details">
+                <span class="user-name">{{ user.get_full_name|default:user.username }}</span>
+                <span class="user-role">{{ user.get_role_display|default:"Сотрудник" }}</span>
+                {% if user.department %}
+                    <span class="user-department">{{ user.department }}</span>
+                {% endif %}
+            </div>
         </div>
+
+        <form action="{% url 'logout' %}" method="post" class="logout-form">
+            {% csrf_token %}
+            <button type="submit" class="logout-btn">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Выйти</span>
+            </button>
+        </form>
+    {% else %}
+        <a href="{% url 'login' %}" class="login-link">
+            <i class="fas fa-sign-in-alt"></i> Войти
+        </a>
+    {% endif %}
+</div>
     </div>
 </header>
 
@@ -157,9 +161,6 @@
 <script src="{% static 'js/onescript.js' %}"></script>
 <script src="{% static 'js/onenews.js' %}"></script>
 <script src="{% static 'js/task.js' %}"></script>
-<script src="{% static 'js/accounting.js' %}"></script>
-<!--<script src="{% static 'js/timer.js' %}"></script>-->
 
-{% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -634,7 +634,6 @@ DEPARTMENT_CONFIG = {
     },
 }
 
-
 def department_page(request, slug):
     department = DEPARTMENT_CONFIG.get(slug)
     if not department:
