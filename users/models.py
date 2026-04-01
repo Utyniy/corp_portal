@@ -23,7 +23,6 @@ class User(AbstractUser):
         null=True
     )
 
-    # 🔥 УДОБНЫЕ ХЕЛПЕРЫ
 
     @property
     def is_admin(self):

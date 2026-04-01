@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 
@@ -11,49 +11,63 @@ from core.services import (
     can_edit_news,
     filter_by_department,
     get_user_visible_tasks,
+    is_manager,
 )
 
 from .forms import DocumentForm, EventForm, NewsForm, TaskForm
 from .models import Document, Event, News, Task, WorkSession
 
 import calendar
-from datetime import datetime
+from datetime import datetime, timedelta
+from django.contrib.auth import get_user_model
 from django.utils import timezone
+
+User = get_user_model()
 
 @login_required
 def index(request):
     user = request.user
+    today = timezone.localdate()
+    now = timezone.now()
 
     news_qs = filter_by_department(
         News.objects.filter(is_published=True).select_related("author").order_by("-published_at"),
         user,
     )
     featured_news = news_qs.first()
-    recent_news = news_qs[1:4] if featured_news else news_qs[:3]
+    recent_news = list(news_qs[1:5] if featured_news else news_qs[:4])
+    visible_news_count = news_qs.count()
 
-    event_list = filter_by_department(
-        Event.objects.filter(date__gte=timezone.now().date()).order_by("date", "start_time"),
+    event_qs = filter_by_department(
+        Event.objects.filter(date__gte=today).order_by("date", "start_time"),
         user,
-    )[:4]
+    )
+    event_list = list(event_qs[:5])
+    upcoming_events_count = event_qs.count()
 
     tasks_qs = get_user_visible_tasks(
         Task.objects.select_related("assigned_to", "created_by").order_by("is_completed", "deadline", "-created_at"),
         user,
     )
-    tasks = tasks_qs.filter(is_completed=False)[:4]
-
-    recent_docs = filter_by_department(
-        Document.objects.select_related("uploaded_by").order_by("-uploaded_at"),
-        user,
-    )[:3]
-
+    active_tasks_qs = tasks_qs.filter(is_completed=False)
+    tasks = list(active_tasks_qs[:5])
     total_tasks = tasks_qs.count()
     completed_tasks = tasks_qs.filter(is_completed=True).count()
     report_progress = int((completed_tasks / total_tasks) * 100) if total_tasks else 0
+    overdue_tasks_count = active_tasks_qs.filter(deadline__lt=now).count()
+    due_soon_tasks_count = active_tasks_qs.filter(deadline__gte=now, deadline__lte=now + timedelta(days=3)).count()
+    high_priority_tasks_count = active_tasks_qs.filter(priority=Task.Priority.HIGH).count()
 
-    today = datetime.today()
-    year = int(request.GET.get("year", today.year))
-    month = int(request.GET.get("month", today.month))
+    recent_docs_qs = filter_by_department(
+        Document.objects.select_related("uploaded_by").order_by("-uploaded_at"),
+        user,
+    )
+    recent_docs = list(recent_docs_qs[:4])
+    visible_docs_count = recent_docs_qs.count()
+
+    today_dt = datetime.today()
+    year = int(request.GET.get("year", today_dt.year))
+    month = int(request.GET.get("month", today_dt.month))
 
     months_ru = ["", "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
                  "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
@@ -62,20 +76,19 @@ def index(request):
     cal = calendar.Calendar(firstweekday=0)
     month_days = cal.monthdayscalendar(year, month)
     weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-    today_day = today.day if today.year == year and today.month == month else None
+    today_day = today_dt.day if today_dt.year == year and today_dt.month == month else None
 
     prev_month = month - 1 if month > 1 else 12
     prev_year = year if month > 1 else year - 1
     next_month = month + 1 if month < 12 else 1
     next_year = year if month < 12 else year + 1
-    current_year = today.year
-    current_month = today.month
+    current_year = today_dt.year
+    current_month = today_dt.month
 
-    today_date = timezone.now().date()
-    sessions = WorkSession.objects.filter(user=user, date=today_date).order_by("start_time")
+    sessions = WorkSession.objects.filter(user=user, date=today).order_by("start_time")
+    active_session = sessions.filter(end_time__isnull=True).first()
 
     total_seconds = 0
-    now = timezone.now()
     for session in sessions:
         end = session.end_time or now
         total_seconds += max(0, int((end - session.start_time).total_seconds()))
@@ -85,6 +98,37 @@ def index(request):
     seconds = total_seconds % 60
     worked_today_formatted = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
     worked_percent = min(100, int((total_seconds / (8 * 3600)) * 100)) if total_seconds else 0
+
+    department_value = getattr(user, "department", None)
+    team_members_qs = User.objects.filter(is_active=True)
+    if department_value and not is_manager(user):
+        team_members_qs = team_members_qs.filter(department=department_value)
+    team_members = list(team_members_qs.order_by("first_name", "last_name", "username")[:6])
+
+    team_departments = list(
+        User.objects.filter(is_active=True)
+        .exclude(department__isnull=True)
+        .exclude(department__exact="")
+        .values("department")
+        .annotate(total=Count("id"))
+        .order_by("-total", "department")[:5]
+    )
+    if department_value and not is_manager(user):
+        team_departments = [item for item in team_departments if item["department"] == department_value]
+
+    task_status_items = [
+        {"label": "Выполнено", "count": completed_tasks, "percent": report_progress, "tone": "success"},
+        {"label": "В работе", "count": active_tasks_qs.count(), "percent": 100 - report_progress if total_tasks else 0, "tone": "primary"},
+        {"label": "Просрочено", "count": overdue_tasks_count, "percent": int((overdue_tasks_count / total_tasks) * 100) if total_tasks else 0, "tone": "danger"},
+    ]
+
+    quick_actions = [
+        {"label": "Новая задача", "url_name": "task_create", "icon": "fa-plus", "style": "primary"},
+        {"label": "Новости", "url_name": "news", "icon": "fa-newspaper", "style": "secondary"},
+        {"label": "Документы", "url_name": "documents", "icon": "fa-file-alt", "style": "secondary"},
+    ]
+    if is_manager(user):
+        quick_actions.insert(1, {"label": "Создать событие", "url_name": "event_create", "icon": "fa-calendar-plus", "style": "secondary"})
 
     context = {
         "weekdays": weekdays,
@@ -107,9 +151,23 @@ def index(request):
         "recent_docs": recent_docs,
         "worked_today_formatted": worked_today_formatted,
         "worked_percent": worked_percent,
+        "active_session": active_session,
+        "visible_news_count": visible_news_count,
+        "upcoming_events_count": upcoming_events_count,
+        "visible_docs_count": visible_docs_count,
+        "overdue_tasks_count": overdue_tasks_count,
+        "due_soon_tasks_count": due_soon_tasks_count,
+        "high_priority_tasks_count": high_priority_tasks_count,
+        "completed_tasks": completed_tasks,
+        "total_tasks": total_tasks,
+        "team_members": team_members,
+        "team_departments": team_departments,
+        "task_status_items": task_status_items,
+        "quick_actions": quick_actions,
+        "today": today,
+        "department_title": department_value or "Все отделы",
     }
     return render(request, "main/index.html", context)
-
 
 def news_list(request):
     qs = filter_by_department(

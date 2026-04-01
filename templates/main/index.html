@@ -1,30 +1,79 @@
 {% extends 'main/base.html' %}
 {% load static %}
 
-{% block title %}Корпоративный портал{% endblock %}
+{% block title %}Дашборд — Корпоративный портал{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="page-title">
-        <h1>Рабочий стол</h1>
-        <p>Добро пожаловать в корпоративный портал</p>
-    </div>
+<div class="container dashboard-page">
+    <section class="dashboard-hero">
+        <div>
+            <div class="dashboard-label">Персональный дашборд</div>
+            <h1>Здравствуйте, {{ user.first_name|default:user.username }}!</h1>
+            <p>
+                Отдел: <strong>{{ department_title }}</strong>.
+                Сегодня у вас {{ tasks|length }} активных задач,
+                {{ upcoming_events_count }} ближайших событий и
+                {{ visible_docs_count }} доступных документов.
+            </p>
+        </div>
+        <div class="dashboard-hero-actions">
+            {% for action in quick_actions %}
+                <a href="{% url action.url_name %}" class="btn-{% if action.style == 'primary' %}primary{% else %}secondary{% endif %}">
+                    <i class="fas {{ action.icon }}"></i> {{ action.label }}
+                </a>
+            {% endfor %}
+        </div>
+    </section>
 
-    <div class="cards-grid">
-        <!-- Левая колонка -->
+    <section class="stats-grid">
+        <article class="stat-card tone-primary">
+            <div class="stat-icon"><i class="fas fa-tasks"></i></div>
+            <div>
+                <div class="stat-value">{{ total_tasks }}</div>
+                <div class="stat-label">Всего задач</div>
+                <div class="stat-meta">{{ completed_tasks }} завершено</div>
+            </div>
+        </article>
+        <article class="stat-card tone-danger">
+            <div class="stat-icon"><i class="fas fa-triangle-exclamation"></i></div>
+            <div>
+                <div class="stat-value">{{ overdue_tasks_count }}</div>
+                <div class="stat-label">Просрочено</div>
+                <div class="stat-meta">{{ due_soon_tasks_count }} скоро истекают</div>
+            </div>
+        </article>
+        <article class="stat-card tone-success">
+            <div class="stat-icon"><i class="fas fa-clock"></i></div>
+            <div>
+                <div class="stat-value">{{ worked_percent }}%</div>
+                <div class="stat-label">Норма дня</div>
+                <div class="stat-meta">{{ worked_today_formatted }}</div>
+            </div>
+        </article>
+        <article class="stat-card tone-secondary">
+            <div class="stat-icon"><i class="fas fa-calendar-day"></i></div>
+            <div>
+                <div class="stat-value">{{ upcoming_events_count }}</div>
+                <div class="stat-label">Ближайшие события</div>
+                <div class="stat-meta">{{ visible_news_count }} новостей в ленте</div>
+            </div>
+        </article>
+    </section>
+
+    <div class="cards-grid dashboard-grid">
         <div class="left-column">
             {% if featured_news %}
-            <div class="card featured-card">
+            <div class="card featured-card dashboard-card">
                 <div class="card-header">
                     <div class="card-title">
                         <i class="fas fa-bullhorn"></i>
-                        <h2>Актуальная новость</h2>
+                        <h2>Главная новость</h2>
                     </div>
-                    <div class="card-badge new">Новое</div>
+                    <div class="card-badge new">{{ featured_news.get_category_display }}</div>
                 </div>
                 <div class="card-content">
                     <h3>{{ featured_news.title }}</h3>
-                    <p>{{ featured_news.content|truncatewords:30 }}</p>
+                    <p>{{ featured_news.content|truncatewords:35 }}</p>
                     <div class="news-meta">
                         <span><i class="far fa-clock"></i> {{ featured_news.published_at|timesince }} назад</span>
                         <span><i class="fas fa-user"></i>
@@ -42,12 +91,130 @@
             </div>
             {% endif %}
 
-            <div class="card">
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-chart-line"></i>
+                        <h2>Статус задач</h2>
+                    </div>
+                    <div class="card-badge">{{ report_progress }}%</div>
+                </div>
+                <div class="card-content">
+                    <div class="report-progress compact-progress">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: {{ report_progress }}%;"></div>
+                            </div>
+                            <span class="progress-percent">{{ report_progress }}%</span>
+                        </div>
+                    </div>
+
+                    <div class="status-breakdown">
+                        {% for item in task_status_items %}
+                        <div class="status-row">
+                            <div class="status-row-head">
+                                <span>{{ item.label }}</span>
+                                <strong>{{ item.count }}</strong>
+                            </div>
+                            <div class="mini-progress {{ item.tone }}">
+                                <span style="width: {{ item.percent }}%"></span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="insights-list">
+                        <div class="insight-item">
+                            <i class="fas fa-fire"></i>
+                            <span>Высокий приоритет: <strong>{{ high_priority_tasks_count }}</strong></span>
+                        </div>
+                        <div class="insight-item">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span>Дедлайн в ближайшие 3 дня: <strong>{{ due_soon_tasks_count }}</strong></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-users"></i>
+                        <h2>Команда</h2>
+                    </div>
+                    <div class="card-badge">{{ team_members|length }}</div>
+                </div>
+                <div class="card-content">
+                    <div class="team-list">
+                        {% for member in team_members %}
+                        <div class="team-item">
+                            <div class="team-avatar">{{ member.first_name|default:member.username|slice:":1"|upper }}</div>
+                            <div>
+                                <h4>{{ member.get_full_name|default:member.username }}</h4>
+                                <p>{{ member.get_role_display }}{% if member.department %} • {{ member.department }}{% endif %}</p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p>Пока нет данных по команде.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="center-column">
+            <div class="card dashboard-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="fas fa-list-check"></i>
+                        <h2>Фокус на сегодня</h2>
+                    </div>
+                    <a href="{% url 'task' %}" class="card-link">Все задачи</a>
+                </div>
+                <div class="card-content">
+                    <div class="tasks-list dashboard-task-list">
+                        {% for task in tasks %}
+                        <div class="task-item priority-{{ task.priority }} dashboard-task-item" data-task-id="{{ task.id }}">
+                            <div class="task-checkbox">
+                                <input type="checkbox" id="task-{{ task.id }}" class="dashboard-task-checkbox">
+                                <label for="task-{{ task.id }}"></label>
+                            </div>
+                            <div class="task-content">
+                                <h4>{{ task.title }}</h4>
+                                <p>
+                                    {% if task.deadline %}
+                                        Срок: {{ task.deadline|date:"d.m.Y H:i" }}
+                                    {% else %}
+                                        Срок не указан
+                                    {% endif %}
+                                </p>
+                                <div class="task-tags">
+                                    <span class="task-tag">{{ task.get_priority_display }}</span>
+                                    <span class="task-tag">{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="empty-state">
+                            <i class="fas fa-circle-check"></i>
+                            <p>Активных задач нет. Отличная работа!</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="card dashboard-card">
                 <div class="card-header">
                     <div class="card-title">
                         <i class="far fa-calendar-alt"></i>
                         <h2>Календарь и таймтрекер</h2>
                     </div>
+                    {% if active_session %}
+                        <div class="card-badge success">День начат</div>
+                    {% else %}
+                        <div class="card-badge">Нет активной сессии</div>
+                    {% endif %}
                 </div>
                 <div class="card-content">
                     <div class="calendar-widget">
@@ -73,9 +240,7 @@
                                     {% if day == 0 %}
                                         <div class="date inactive"></div>
                                     {% else %}
-                                        <div class="date{% if day == today_day %} today{% endif %}">
-                                            {{ day }}
-                                        </div>
+                                        <div class="date{% if day == today_day %} today{% endif %}">{{ day }}</div>
                                     {% endif %}
                                 {% endfor %}
                             {% endfor %}
@@ -93,29 +258,28 @@
                             </div>
                             <span id="work-percent">{{ worked_percent }}%</span>
                         </div>
-                        <div class="tracker-buttons" style="margin-top: 15px; display: flex; gap: 10px;">
-                            <button id="start-work-btn" class="btn-primary" style="flex: 1;" type="button">Начать день</button>
-                            <button id="end-work-btn" class="btn-secondary" style="flex: 1;" type="button">Завершить день</button>
+                        <div class="tracker-buttons dashboard-buttons">
+                            <button id="start-work-btn" class="btn-primary" type="button">Начать день</button>
+                            <button id="end-work-btn" class="btn-secondary" type="button">Завершить день</button>
                         </div>
-                        <div id="work-message" style="margin-top: 10px; font-size: 0.85rem; text-align: center; display: none;"></div>
+                        <div id="work-message" class="dashboard-message"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Центральная колонка -->
-        <div class="center-column">
-            <div class="card">
+        <div class="right-column">
+            <div class="card dashboard-card">
                 <div class="card-header">
                     <div class="card-title">
-                        <i class="far fa-clock"></i>
+                        <i class="fas fa-calendar-week"></i>
                         <h2>Ближайшие события</h2>
                     </div>
                     <a href="{% url 'events' %}" class="card-link">Все события</a>
                 </div>
                 <div class="card-content">
-                    <div class="events-list">
-                        {% for event in event_list|slice:":4" %}
+                    <div class="events-list compact-events">
+                        {% for event in event_list %}
                         <div class="event-item">
                             <div class="event-date">
                                 <span class="event-day">{{ event.date|date:"j" }}</span>
@@ -127,15 +291,13 @@
                                     <i class="far fa-clock"></i>
                                     {% if event.start_time and event.end_time %}
                                         {{ event.start_time|time:"H:i" }} — {{ event.end_time|time:"H:i" }}
-                                    {% elif event.end_time %}
-                                        До {{ event.end_time|time:"H:i" }}
                                     {% elif event.start_time %}
-                                        Начало в {{ event.start_time|time:"H:i" }}
+                                        {{ event.start_time|time:"H:i" }}
                                     {% else %}
                                         Время не указано
                                     {% endif %}
                                 </p>
-                                <p><i class="fas fa-map-marker-alt"></i> {{ event.location|default:"Место не указано" }}</p>
+                                <p><i class="fas fa-location-dot"></i> {{ event.location|default:"Место не указано" }}</p>
                             </div>
                         </div>
                         {% empty %}
@@ -145,159 +307,55 @@
                 </div>
             </div>
 
-            <!-- Меняем блок на прогресс задач -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">
-                        <i class="fas fa-chart-line"></i>
-                        <h2>Прогресс задач</h2>
-                    </div>
-                    <div class="card-badge" id="report-badge">
-                        {% if report_progress == 100 %}Готово{% else %}В процессе{% endif %}
-                    </div>
-                </div>
-                <div class="card-content">
-                    <div class="report-progress" style="margin-bottom: 20px;">
-                        <div class="progress-bar-container">
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: {{ report_progress }}%;"></div>
-                            </div>
-                            <span class="progress-percent">{{ report_progress }}%</span>
-                        </div>
-                    </div>
-
-                    <div class="report-steps">
-                        <div class="report-step {% if report_progress >= 25 %}completed{% elif report_progress > 0 %}active{% else %}pending{% endif %}">
-                            <div class="step-indicator">{% if report_progress >= 25 %}<i class="fas fa-check"></i>{% else %}1{% endif %}</div>
-                            <div class="step-info">
-                                <h4>Запуск</h4>
-                                <p>Первые задачи взяты в работу</p>
-                            </div>
-                        </div>
-
-                        <div class="report-step {% if report_progress >= 50 %}completed{% elif report_progress >= 25 %}active{% else %}pending{% endif %}">
-                            <div class="step-indicator">{% if report_progress >= 50 %}<i class="fas fa-check"></i>{% else %}2{% endif %}</div>
-                            <div class="step-info">
-                                <h4>Стабильный прогресс</h4>
-                                <p>Задачи выполняются по плану</p>
-                            </div>
-                        </div>
-
-                        <div class="report-step {% if report_progress >= 75 %}completed{% elif report_progress >= 50 %}active{% else %}pending{% endif %}">
-                            <div class="step-indicator">{% if report_progress >= 75 %}<i class="fas fa-check"></i>{% else %}3{% endif %}</div>
-                            <div class="step-info">
-                                <h4>Финишная стадия</h4>
-                                <p>Остались завершающие задачи</p>
-                            </div>
-                        </div>
-
-                        <div class="report-step {% if report_progress >= 100 %}completed{% elif report_progress >= 75 %}active{% else %}pending{% endif %}">
-                            <div class="step-indicator">{% if report_progress >= 100 %}<i class="fas fa-check"></i>{% else %}4{% endif %}</div>
-                            <div class="step-info">
-                                <h4>Завершено</h4>
-                                <p>Все задачи закрыты</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <a href="{% url 'task' %}" class="btn-primary" style="margin-top: 20px; display: block; text-align: center;">
-                        <i class="fas fa-tasks"></i> Перейти к задачам
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Правая колонка -->
-        <div class="right-column">
-            <div class="card">
+            <div class="card dashboard-card">
                 <div class="card-header">
                     <div class="card-title">
                         <i class="fas fa-newspaper"></i>
-                        <h2>Новости компании</h2>
+                        <h2>Лента новостей</h2>
                     </div>
-                    <div class="card-badge">{{ recent_news|length }}</div>
+                    <a href="{% url 'news' %}" class="card-link">Все новости</a>
                 </div>
                 <div class="card-content">
-                    <div class="news-list">
+                    <div class="news-list compact-news-list">
                         {% for news in recent_news %}
-                        <div class="news-item">
-                            <div class="news-icon">
-                                {% if news.category == 'corporate' %}
-                                    <i class="fas fa-building"></i>
-                                {% elif news.category == 'events' %}
-                                    <i class="fas fa-calendar-alt"></i>
-                                {% elif news.category == 'hr' %}
-                                    <i class="fas fa-users"></i>
-                                {% elif news.category == 'tech' %}
-                                    <i class="fas fa-microchip"></i>
-                                {% else %}
-                                    <i class="fas fa-newspaper"></i>
-                                {% endif %}
-                            </div>
-                            <div class="news-content">
-                                <h4>{{ news.title }}</h4>
-                                <p>{{ news.content|truncatewords:15 }}</p>
-                                <span class="news-date">{{ news.published_at|date:"d.m.Y" }}</span>
-                            </div>
-                        </div>
+                        <a href="{% url 'news_detail' news.pk %}" class="news-compact-item">
+                            <div class="news-compact-category">{{ news.get_category_display }}</div>
+                            <h4>{{ news.title }}</h4>
+                            <p>{{ news.content|truncatewords:12 }}</p>
+                            <span>{{ news.published_at|date:"d.m.Y H:i" }}</span>
+                        </a>
                         {% empty %}
-                        <div class="news-item">
-                            <div class="news-content">
-                                <p>Новостей пока нет.</p>
-                            </div>
-                        </div>
+                        <p>Новостей пока нет.</p>
                         {% endfor %}
                     </div>
-                    <a href="{% url 'news' %}" class="see-all-link">
-                        <i class="fas fa-arrow-right"></i> Все новости
-                    </a>
                 </div>
             </div>
 
-            <!-- Возвращаем Мои задачи -->
-            <div class="card">
+            <div class="card dashboard-card">
                 <div class="card-header">
                     <div class="card-title">
-                        <i class="fas fa-tasks"></i>
-                        <h2>Мои задачи</h2>
+                        <i class="fas fa-building-user"></i>
+                        <h2>Отделы</h2>
                     </div>
-                    <a href="{% url 'task' %}" class="card-link">{{ tasks|length }}</a>
                 </div>
                 <div class="card-content">
-                    <div class="tasks-list">
-                        {% for task in tasks %}
-                        <div class="task-item priority-{{ task.priority }}">
-                            <div class="task-checkbox">
-                                <input type="checkbox" id="task-{{ task.id }}">
-                                <label for="task-{{ task.id }}"></label>
-                            </div>
-                            <div class="task-content">
-                                <h4>{{ task.title }}</h4>
-                                <p>
-                                    Дедлайн:
-                                    {% if task.deadline %}
-                                        {{ task.deadline|date:"d.m.Y H:i" }}
-                                    {% else %}
-                                        Не указан
-                                    {% endif %}
-                                </p>
-                            </div>
+                    <div class="department-list">
+                        {% for item in team_departments %}
+                        <div class="department-row">
+                            <span>{{ item.department }}</span>
+                            <strong>{{ item.total }}</strong>
                         </div>
                         {% empty %}
-                        <p>Нет активных задач</p>
+                        <p>Нет данных по отделам.</p>
                         {% endfor %}
                     </div>
-                    <a href="{% url 'task_create' %}" class="btn-secondary">
-                        <i class="fas fa-plus"></i> Добавить задачу
-                    </a>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Нижний ряд карточек -->
-    <div class="bottom-row">
-        <div class="card documents-card">
+    <div class="bottom-row dashboard-bottom-row">
+        <div class="card documents-card dashboard-card">
             <div class="card-header">
                 <div class="card-title">
                     <i class="fas fa-file-alt"></i>
@@ -311,11 +369,11 @@
                     <div class="document-item">
                         <div class="doc-icon">
                             {% with file_name=doc.file.name|lower %}
-                                {% if ".pdf" in file_name %}
+                                {% if '.pdf' in file_name %}
                                     <i class="fas fa-file-pdf"></i>
-                                {% elif ".doc" in file_name %}
+                                {% elif '.doc' in file_name %}
                                     <i class="fas fa-file-word"></i>
-                                {% elif ".xls" in file_name %}
+                                {% elif '.xls' in file_name %}
                                     <i class="fas fa-file-excel"></i>
                                 {% else %}
                                     <i class="fas fa-file-alt"></i>
@@ -337,9 +395,7 @@
                             {% endif %}
                         </div>
                     </div>
-                    {% if not forloop.last %}
-                    <div class="doc-separator-line"></div>
-                    {% endif %}
+                    {% if not forloop.last %}<div class="doc-separator-line"></div>{% endif %}
                     {% empty %}
                     <p>Нет документов</p>
                     {% endfor %}
@@ -347,78 +403,34 @@
             </div>
         </div>
 
-        <!-- Возвращаем старую оргструктуру -->
-        <div class="card org-card">
+        <div class="card dashboard-card">
             <div class="card-header">
                 <div class="card-title">
-                    <i class="fas fa-sitemap"></i>
-                    <h2>Организационная структура</h2>
+                    <i class="fas fa-bolt"></i>
+                    <h2>Полезные акценты на сегодня</h2>
                 </div>
-                <a href="#" class="card-link">Подробнее</a>
             </div>
             <div class="card-content">
-                <div class="org-chart">
-                    <div class="org-level top-level">
-                        <div class="org-node ceo">
-                            <div class="node-avatar">
-                                <i class="fas fa-crown"></i>
-                            </div>
-                            <div class="node-info">
-                                <h4>Алексей Петров</h4>
-                                <p>Генеральный директор</p>
-                                <span class="node-email">a.petrov@company.ru</span>
-                            </div>
+                <div class="insights-panel">
+                    <div class="insight-panel-item">
+                        <i class="fas fa-circle-info"></i>
+                        <div>
+                            <h4>Прогресс по задачам</h4>
+                            <p>Закрыто {{ completed_tasks }} из {{ total_tasks }} задач.</p>
                         </div>
                     </div>
-                    <div class="org-level middle-level">
-                        <div class="org-node">
-                            <div class="node-avatar">АС</div>
-                            <div class="node-info">
-                                <h4>Анна Смирнова</h4>
-                                <p>Финансовый директор</p>
-                                <span class="node-department">Бухгалтерия • Финансы</span>
-                            </div>
-                        </div>
-                        <div class="org-node">
-                            <div class="node-avatar">ИК</div>
-                            <div class="node-info">
-                                <h4>Иван Козлов</h4>
-                                <p>Технический директор</p>
-                                <span class="node-department">Разработка • IT</span>
-                            </div>
-                        </div>
-                        <div class="org-node">
-                            <div class="node-avatar">ОН</div>
-                            <div class="node-info">
-                                <h4>Ольга Новикова</h4>
-                                <p>Директор по маркетингу</p>
-                                <span class="node-department">Маркетинг • Продажи</span>
-                            </div>
+                    <div class="insight-panel-item">
+                        <i class="fas fa-folder-open"></i>
+                        <div>
+                            <h4>База документов</h4>
+                            <p>Доступно {{ visible_docs_count }} документов для вашего профиля.</p>
                         </div>
                     </div>
-                    <div class="org-level bottom-level">
-                        <div class="org-sublevel">
-                            <div class="org-node small">
-                                <div class="node-avatar small">МП</div>
-                                <div class="node-info">
-                                    <h4>Мария Петрова</h4>
-                                    <p>Главный бухгалтер</p>
-                                </div>
-                            </div>
-                            <div class="org-node small">
-                                <div class="node-avatar small">СИ</div>
-                                <div class="node-info">
-                                    <h4>Сергей Иванов</h4>
-                                    <p>Руководитель IT</p>
-                                </div>
-                            </div>
-                            <div class="org-node small">
-                                <div class="node-avatar small">ЕК</div>
-                                <div class="node-info">
-                                    <h4>Елена Ковалева</h4>
-                                    <p>Руководитель отдела продаж</p>
-                                </div>
-                            </div>
+                    <div class="insight-panel-item">
+                        <i class="fas fa-bell"></i>
+                        <div>
+                            <h4>Инфополе</h4>
+                            <p>В корпоративной ленте сейчас {{ visible_news_count }} опубликованных материалов.</p>
                         </div>
                     </div>
                 </div>
@@ -475,13 +487,16 @@
         }
     }
 
+    function showMessage(text) {
+        if (!messageEl) return;
+        messageEl.style.display = "block";
+        messageEl.textContent = text || "";
+    }
+
     if (startBtn) {
         startBtn.addEventListener("click", async function () {
             const data = await postAction("{% url 'start_work' %}");
-            if (messageEl) {
-                messageEl.style.display = "block";
-                messageEl.textContent = data.message || data.error || "";
-            }
+            showMessage(data.message || data.error || "");
             refreshWorkTime();
         });
     }
@@ -489,13 +504,29 @@
     if (endBtn) {
         endBtn.addEventListener("click", async function () {
             const data = await postAction("{% url 'end_work' %}");
-            if (messageEl) {
-                messageEl.style.display = "block";
-                messageEl.textContent = data.message || data.error || "";
-            }
+            showMessage(data.message || data.error || "");
             refreshWorkTime();
         });
     }
+
+    document.querySelectorAll('.dashboard-task-checkbox').forEach((checkbox) => {
+        checkbox.addEventListener('change', async function () {
+            if (!this.checked) return;
+
+            const item = this.closest('.dashboard-task-item');
+            const taskId = item?.dataset.taskId;
+            if (!taskId) return;
+
+            const data = await postAction(`/tasks/${taskId}/complete/`);
+            if (data.status === 'success') {
+                item.classList.add('completed-local');
+                setTimeout(() => item.remove(), 350);
+            } else {
+                this.checked = false;
+                showMessage(data.message || 'Не удалось завершить задачу');
+            }
+        });
+    });
 
     refreshWorkTime();
     setInterval(refreshWorkTime, 1000);
