@@ -1,5 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.http import JsonResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.db.models import Count, Q
@@ -21,6 +21,7 @@ import calendar
 from datetime import datetime, timedelta
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from collections import defaultdict
 
 User = get_user_model()
 
@@ -599,3 +600,58 @@ def get_work_time(request):
             "formatted": f"{hours:02d}:{minutes:02d}:{seconds:02d}",
         }
     })
+
+DEPARTMENT_CONFIG = {
+    "management": {
+        "title": "Управление",
+        "department_name": "Управление",
+        "icon": "📈",
+        "description": "Руководящий состав компании и ключевые управленческие роли.",
+    },
+    "development": {
+        "title": "Разработка",
+        "department_name": "Разработка",
+        "icon": "💻",
+        "description": "Команда разработки, отвечающая за создание и поддержку продукта.",
+    },
+    "marketing": {
+        "title": "Маркетинг",
+        "department_name": "Маркетинг",
+        "icon": "📣",
+        "description": "Отдел продвижения, рекламы и коммуникаций с аудиторией.",
+    },
+    "accounting": {
+        "title": "Бухгалтерия",
+        "department_name": "Бухгалтерия",
+        "icon": "🧾",
+        "description": "Финансовый учет, отчетность и сопровождение платежей.",
+    },
+    "hr": {
+        "title": "HR",
+        "department_name": "HR",
+        "icon": "👥",
+        "description": "Подбор, адаптация и развитие сотрудников компании.",
+    },
+}
+
+
+def department_page(request, slug):
+    department = DEPARTMENT_CONFIG.get(slug)
+    if not department:
+        raise Http404("Отдел не найден")
+
+    employees = User.objects.filter(
+        department=department["department_name"]
+    ).order_by("username")
+
+    context = {
+        "department_slug": slug,
+        "department_title": department["title"],
+        "department_name": department["department_name"],
+        "department_icon": department["icon"],
+        "department_description": department["description"],
+        "employees": employees,
+        "employees_count": employees.count(),
+        "department_menu": DEPARTMENT_CONFIG,
+    }
+    return render(request, "main/department_page.html", context)

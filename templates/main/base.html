@@ -52,18 +52,18 @@
                 </li>
 
                 <li class="dropdown">
-                    <a href="#" class="nav-link dropdown-toggle">
+                    <a href="#" class="nav-link dropdown-toggle {% if request.resolver_match.url_name == 'department_page' %}active{% endif %}">
                         <i class="fas fa-sitemap"></i> Орг.структура
                         <i class="fas fa-chevron-down dropdown-arrow"></i>
                     </a>
                     <ul class="dropdown-menu">
-                        <li><a href="#" class="dropdown-item"><i class="fas fa-chart-line"></i> Управление</a></li>
-                        <li><a href="#" class="dropdown-item"><i class="fas fa-code"></i> Разработка</a></li>
-                        <li><a href="#" class="dropdown-item"><i class="fas fa-chart-bar"></i> Маркетинг</a></li>
+                        <li><a href="{% url 'department_page' 'management' %}" class="dropdown-item"><i class="fas fa-chart-line"></i> Управление</a></li>
+                        <li><a href="{% url 'department_page' 'development' %}" class="dropdown-item"><i class="fas fa-code"></i> Разработка</a></li>
+                        <li><a href="{% url 'department_page' 'marketing' %}" class="dropdown-item"><i class="fas fa-chart-bar"></i> Маркетинг</a></li>
                         {% if user|has_any_role:"accountant,management,admin" %}
-                        <li><a href="#" class="dropdown-item"><i class="fas fa-calculator"></i> Бухгалтерия</a></li>
+                        <li><a href="{% url 'department_page' 'accounting' %}" class="dropdown-item"><i class="fas fa-calculator"></i> Бухгалтерия</a></li>
                         {% endif %}
-                        <li><a href="#" class="dropdown-item"><i class="fas fa-users"></i> HR</a></li>
+                        <li><a href="{% url 'department_page' 'hr' %}" class="dropdown-item"><i class="fas fa-users"></i> HR</a></li>
                     </ul>
                 </li>
                 <li>
@@ -153,29 +153,6 @@
         </div>
     </div>
 </footer>
-
-<script>
-(function () {
-    const dropdowns = document.querySelectorAll('.dropdown');
-    dropdowns.forEach(dropdown => {
-        const toggle = dropdown.querySelector('.dropdown-toggle');
-        if (!toggle) return;
-
-        toggle.addEventListener('click', function (e) {
-            e.preventDefault();
-            dropdown.classList.toggle('open');
-        });
-    });
-
-    document.addEventListener('click', function (e) {
-        dropdowns.forEach(dropdown => {
-            if (!dropdown.contains(e.target)) {
-                dropdown.classList.remove('open');
-            }
-        });
-    });
-})();
-</script>
 
 <script src="{% static 'js/onescript.js' %}"></script>
 <script src="{% static 'js/onenews.js' %}"></script>

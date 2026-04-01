@@ -1,0 +1,64 @@
+{% extends "main/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="department-hero card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <div class="department-icon mb-2">{{ department_icon }}</div>
+                    <h2 class="mb-2">{{ department_title }}</h2>
+                    <p class="text-muted mb-0">{{ department_description }}</p>
+                </div>
+                <div class="department-stat text-center">
+                    <div class="small text-muted">Сотрудников</div>
+                    <div class="display-6 fw-semibold">{{ employees_count }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+            <h4 class="mb-4">Состав отдела</h4>
+
+            <div class="row g-4">
+                {% for user in employees %}
+                    <div class="col-md-6 col-xl-4">
+                        <div class="employee-card h-100">
+                            <div class="employee-avatar">
+                                {{ user.username|slice:":1"|upper }}
+                            </div>
+
+                            <div class="employee-info">
+                                <h5 class="mb-1">
+                                    {{ user.get_full_name|default:user.username }}
+                                </h5>
+                                <div class="text-muted mb-2">@{{ user.username }}</div>
+
+                                {% if user.email %}
+                                    <div class="employee-meta">
+                                        <strong>Email:</strong> {{ user.email }}
+                                    </div>
+                                {% endif %}
+
+                                {% if user.department %}
+                                    <div class="employee-meta">
+                                        <strong>Отдел:</strong> {{ user.department }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <div class="alert alert-light border mb-0">
+                            В отделе «{{ department_title }}» пока нет сотрудников.
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
